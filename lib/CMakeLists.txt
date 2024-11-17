@@ -1,1 +1,1 @@
-add_library(argparser ArgParser.cpp Node.cpp ArgParser.h)
+add_library(argparser ArgParser.cpp Node.cpp ArgParser.h Parser.cpp)

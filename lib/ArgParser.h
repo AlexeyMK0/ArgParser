@@ -26,6 +26,23 @@ private:
         kNone
     };
 
+    enum ParseArgType {
+        kValue = 0,
+        kFlag,
+        kArgument,
+        kEmpty
+    };
+
+    struct ParseData {
+        std::string cur_param_name;
+        bool cur_param_got_arg;
+        std::string cur_parse_arg;
+        ParseArgType cur_type;
+        int next_ind;
+        ParseData(const std::string& cur_param_name = kNoneParamName, 
+            const bool cur_param_got_arg = false);
+    };
+
     class Node {
      public:
         const static std::unique_ptr<Node> kNullNodePtr; 
@@ -47,9 +64,11 @@ private:
         }
         virtual void Reset() { is_used_ = false; }
         virtual ArgType GetType() const { return ArgType::kNone; }
-        virtual void AddValue(const std::string& val) 
-            {std::cout << "This should never be called\n";}
+        virtual bool AddValue(const std::string& val)
+            {return true;}
+        virtual void ArgCalled() {}
         virtual bool IsOk() const { return true; }
+        virtual bool TakesArgument() const { return false; }
         virtual std::string GetDescription() const { return description_; }
         virtual std::string GetLongArg(const std::string& name_) const
             { return "--" + name_; }
@@ -64,6 +83,7 @@ private:
         virtual std::string GetRequirements(std::string sep = ", ") const 
             { return kNullString; }
         bool IsUsed() const { return is_used_; }
+        bool IsMultiValue() const { return is_multivalue_; }
      protected:
         void AddSepIfNotNull(std::string& val, const std::string& sep) const {
             if (val != kNullString) {
@@ -75,6 +95,7 @@ private:
         bool is_used_ = false;
         bool has_default_ = false;
         bool stores_value_ = false;
+        bool is_multivalue_ = false;
         std::string description_ = kNullString;
         char flag_ = kNoneFlag;
     };
@@ -85,7 +106,8 @@ private:
         ~BoolArg();
         virtual void Reset() override;
         virtual ArgType GetType() const override { return ArgType::kBoolArg; }
-        virtual void AddValue(const std::string& val) override;
+        virtual bool AddValue(const std::string& val) override;
+        virtual void ArgCalled() override;
         virtual bool IsOk() const override;
         virtual std::string GetRequirements(std::string sep = ", ") const override;
         BoolArg& Default(bool val);
@@ -95,7 +117,7 @@ private:
         virtual void CreateValuesIfNeed() override;
      private:
         bool default_val_ = false;
-        bool* stored_value_;
+        bool* stored_value_ = nullptr;
     };
 
     class HelpArg : public Node {
@@ -103,7 +125,8 @@ private:
         HelpArg(const std::string& description, const char flag);
         virtual void Reset() override;
         virtual ArgType GetType() const override { return ArgType::kHelp; }
-        virtual void AddValue(const std::string& val) override;
+        virtual bool AddValue(const std::string& val) override;
+        virtual void ArgCalled() override;
         virtual bool IsOk() const override;
     protected:
         virtual void CreateValuesIfNeed() override {}
@@ -114,13 +137,11 @@ private:
         virtual PositionalNode& Positional();
         virtual PositionalNode& MultiValue(int min_size = kMinSizeDefault);
         bool IsPositional() const { return is_positional_; }
-        bool IsMultiValue() const { return is_multivalue_; }
         virtual std::string GetRequirements(std::string sep = ", ") const override;
      protected:
         PositionalNode(const std::string& description, const char flag) 
         : Node(description, flag) {}
         bool is_positional_ = false;
-        bool is_multivalue_ = false;
         int min_size_ = kMinSizeDefault;
     };
 
@@ -130,8 +151,9 @@ private:
         ~IntArg();
         virtual void Reset() override;
         virtual ArgType GetType() const override { return ArgType::kIntArg; }
-        virtual void AddValue(const std::string& val) override;
+        virtual bool AddValue(const std::string& val) override;
         virtual bool IsOk() const override;
+        virtual bool TakesArgument() const override { return true; }
         virtual std::string GetRequirements(std::string sep = ", ") const override;
         virtual std::string GetLongArg(const std::string& name) const override; 
         virtual IntArg& Positional() override;
@@ -155,7 +177,7 @@ private:
         ~StringArg();
         virtual void Reset() override;
         virtual ArgType GetType() const override { return ArgType::kStringArg; }
-        virtual void AddValue(const std::string& val) override;
+        virtual bool AddValue(const std::string& val) override;
         virtual bool IsOk() const override;
         virtual std::string GetRequirements(std::string sep = ", ") const override;
         virtual std::string GetLongArg(const std::string& name) const override; 
@@ -168,7 +190,7 @@ private:
     protected:
         virtual void CreateValuesIfNeed() override;
      private:
-        std::string default_val_ = "";
+        std::string default_val_ = kNullString;
         std::string* stored_value_ = nullptr;
         std::vector<std::string>* values_ = nullptr;
     };
@@ -176,9 +198,11 @@ private:
 public:
     ArgParser(const std::string& name);
     // ~ArgParser();
-    // bool Parse(const int argc, char** argv);
+    bool Parse(const int argc, char** argv);
     bool Parse(const std::vector<std::string>& args);
-
+    bool ProcessValue(ParseData& parse_data);
+    bool ProcessFlag(ParseData& parse_data);
+    bool ProcessArgument(ParseData& parse_data);
     void AddHelp(const char flag, const std::string param_name, const std::string& description);
     bool Help();
     std::string HelpDescription();
@@ -198,7 +222,9 @@ public:
     BoolArg& AddFlag(const char flag, const std::string& param_name, 
         const std::string& description = "");
     BoolArg& AddFlag(const std::string& param_name, const std::string& description = "");
-    
+
+    std::string GetParamByFlag(const char flag) const;
+
 private:
     // std::unique_ptr<Node>& GetPtr(const std::string& param);
     bool CheckType(ArgType type, const std::string &param_name) const;
@@ -206,10 +232,13 @@ private:
     bool CheckPositional(const std::string& param_name) const;
     bool CheckAddNewArg(const char flag, const std::string& param_name) const;
     bool CheckArgsAreOk();
+    bool ValidateParam(const std::string& param) const;
+    bool ValidateFlag(const char flag) const;
     void AddArgument(const char flag, const std::string& param_name, 
         Node* arg_ptr);
+    void ArgCalled(const std::string& param);
     void SetPositional(const std::string& param);
-    void AddToPostional(const std::string& val);
+    bool AddToPostional(const std::string& val);
     void Update();
     // std::unique_ptr<Node> CreateNode(ArgType type);
     Node& GetArg(const std::string& param);
@@ -218,6 +247,9 @@ private:
     StringArg& GetStringArg(const std::string& param);
     BoolArg& GetBoolArg(const std::string& param);
     std::string GetArgInfo(const Node& val, const std::string& name);
+
+    ParseArgType GetParseArgType(const std::string& arg) const;
+    std::string GetParamByLongArg(const std::string& long_arg) const;
 
     std::string positional_param_ = kNoneParamName;
     std::string last_added_param_ = kNoneParamName;

@@ -19,22 +19,6 @@ ArgParser::ArgParser(const std::string& name) {
 
 // ArgParser::~ArgParser();
 
-// bool ArgParser::Parse(const int argc, char** argv);
-bool ArgParser::Parse(const std::vector<std::string>& args) {
-    int cnt = 0;
-    for (const auto& val : args) {
-        if (cnt & 1) {
-            GetArg("goal").AddValue(val);
-        } else {
-            // GetArg("bebra").AddValue(val);
-            AddToPostional(val);
-        }
-        ++cnt;
-    }
-    GetArg("help").AddValue("");
-    return CheckArgsAreOk();
-}
-
 void ArgParser::AddHelp(const char flag, const std::string param_name, 
     const std::string& description) 
 {
@@ -126,6 +110,9 @@ ArgParser::BoolArg& ArgParser::AddFlag(const std::string& param_name,
     return AddFlag(kNoneFlag, param_name, description);
 }
 
+std::string ArgParser::GetParamByFlag(const char flag) const {
+    return flag_to_name_[flag];
+}
 
 // std::unique_ptr<ArgParser::Node>& ArgParser::GetPtr(const std::string& param) {
 //     auto node = name_to_argument_node_.find(param);
@@ -178,6 +165,16 @@ bool ArgParser::CheckArgsAreOk() {
     return true;
 }
 
+bool ArgParser::ValidateParam(const std::string& param) const {
+    if (param == kNoneParamName) return false;
+    return !CheckType(ArgType::kNone, param);
+}
+
+bool ArgParser::ValidateFlag(const char flag) const {
+    if (flag == kNoneFlag) return false;
+    return flag_to_name_[flag] != kNoneParamName;
+}
+
 void ArgParser::AddArgument(const char flag, 
     const std::string& param_name, Node* arg_ptr)
 {
@@ -191,6 +188,10 @@ void ArgParser::AddArgument(const char flag,
     last_added_param_ = param_name;
 }
 
+void ArgParser::ArgCalled(const std::string& param) {
+    GetArg(param).ArgCalled();
+}
+
 void ArgParser::SetPositional(const std::string& param) {
     if (positional_param_ != kNoneParamName) {
         // handle an error
@@ -198,14 +199,15 @@ void ArgParser::SetPositional(const std::string& param) {
     positional_param_ = param;
 }
 
-void ArgParser::AddToPostional(const std::string& val) {
+bool ArgParser::AddToPostional(const std::string& val) {
     Update();
     if (positional_param_ == kNoneParamName) {
-        // handle an error
+        return false;
     }
     Node& node = GetArg(positional_param_);
-    node.AddValue(val);
+    return node.AddValue(val);
 }
+
 void ArgParser::Update() {
     if (!need_update_) return;
     if (last_added_param_ != kNoneParamName && 

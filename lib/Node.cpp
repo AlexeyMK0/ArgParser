@@ -1,6 +1,6 @@
 #include "ArgParser.h"
 
-int ConvertToInt(const std::string& val) {
+std::pair<int, bool> ConvertToInt(const std::string& val) {
     int ret = 0;
     int k = 1;
     int ind = 0;
@@ -10,19 +10,22 @@ int ConvertToInt(const std::string& val) {
     }
     while (ind < val.size()) {
         if (!isdigit(val[ind])) {
-            // handle an error
+            return {-1, false};
         }
         ret *= 10;
         ret += val[ind] - '0';
         ++ind;
     }
-    return ret;
+    return {ret * k, true};
 }
 
 namespace ArgumentParser {
     // BoolArg //
     ArgParser::BoolArg::BoolArg(const std::string& description, const char flag) :
-        Node(description, flag) {}
+        Node(description, flag)
+    {
+        stored_value_ = nullptr;
+    }
 
     ArgParser::BoolArg::~BoolArg() {
         if (!stores_value_) return;
@@ -36,7 +39,12 @@ namespace ArgumentParser {
         CreateValuesIfNeed();
     }
 
-    void ArgParser::BoolArg::AddValue(const std::string& val) {
+    bool ArgParser::BoolArg::AddValue(const std::string& val) {
+        ArgCalled();
+        return true;
+    }
+
+    void ArgParser::BoolArg::ArgCalled() {
         CreateValuesIfNeed();
         *stored_value_ = true;
         is_used_ = true;
@@ -50,7 +58,6 @@ namespace ArgumentParser {
         return Node::GetRequirements(sep);
     }
 
-
     ArgParser::BoolArg& ArgParser::BoolArg::Default(bool val) {
         has_default_ = true;
         default_val_ = val;
@@ -58,7 +65,9 @@ namespace ArgumentParser {
     }
 
     ArgParser::BoolArg& ArgParser::BoolArg::StoreValue(bool& storage) {
-        if (stored_value_ != nullptr && !stores_value_) delete stored_value_;
+        if (stored_value_ != nullptr && !stores_value_) {
+            delete stored_value_;
+        }
         stored_value_ = &storage;
         stores_value_ = true;
         return *this;
@@ -84,7 +93,12 @@ namespace ArgumentParser {
         Node::Reset();
     }
 
-    void ArgParser::HelpArg::AddValue(const std::string& val) {
+    bool ArgParser::HelpArg::AddValue(const std::string& val) {
+        ArgCalled();
+        return true;
+    }
+
+    void ArgParser::HelpArg::ArgCalled() {
         CreateValuesIfNeed();
         is_used_ = true;
     }
@@ -147,15 +161,20 @@ namespace ArgumentParser {
         }
     }
 
-    void ArgParser::IntArg::AddValue(const std::string& val) {
+    bool ArgParser::IntArg::AddValue(const std::string& val) {
         CreateValuesIfNeed();
-        is_used_ = true;
-        int nval = ConvertToInt(val);
+        
+        auto [nval, is_ok] = ConvertToInt(val);
+        if (!is_ok) {
+            return false;
+        }
         if (IsMultiValue()) {
             values_->push_back(nval);
         } else {
             *stored_value_ = nval;
         }
+        is_used_ = true;
+        return true;
     }
 
     bool ArgParser::IntArg::IsOk() const {
@@ -261,7 +280,7 @@ namespace ArgumentParser {
         }
     }
 
-    void ArgParser::StringArg::AddValue(const std::string& val) {
+    bool ArgParser::StringArg::AddValue(const std::string& val) {
         CreateValuesIfNeed();
         is_used_ = true;
         if (IsMultiValue()) {
@@ -269,6 +288,7 @@ namespace ArgumentParser {
         } else {
             *stored_value_ = val;
         }
+        return true;
     }
 
     bool ArgParser::StringArg::IsOk() const {
