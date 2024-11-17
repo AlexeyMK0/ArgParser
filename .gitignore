@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Dev files
+args.txt
+build
