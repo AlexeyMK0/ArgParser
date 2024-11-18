@@ -1,5 +1,17 @@
 #include "ArgParser.h"
 
+std::pair<std::string, std::string> SplitByFirst(
+    const std::string& val, const char sep = '=', int start_ind = 0)
+{
+    size_t end_of_first = val.find('=');
+    end_of_first = end_of_first == std::string::npos ? 
+        val.size() : end_of_first;
+    std::string s1 = val.substr(start_ind, end_of_first - start_ind);
+    std::string s2 = "";
+    if (end_of_first != val.size())
+        s2 = val.substr(end_of_first + 1);
+    return {s1, s2};
+}
 
 namespace ArgumentParser {
 
@@ -19,7 +31,7 @@ bool ArgParser::Parse(const int argc, char** argv) {
 }
 
 bool ArgParser::Parse(const std::vector<std::string>& args) {
-    good_parse_ = true;
+    Reset();
     int argc = args.size();
     ParseData parse_data;
     parse_data.next_ind = 1;
@@ -49,6 +61,10 @@ bool ArgParser::Parse(const std::vector<std::string>& args) {
             break;
         }
     }
+    if (Help()) {
+        std::cout << HelpDescription() << "\n";
+        return true;
+    }
     good_parse_ &= CheckArgsAreOk();
     return good_parse_;
 }
@@ -60,7 +76,7 @@ bool ArgParser::ProcessValue(ParseData& parse_data) {
     } else if (GetArg(parse_data.cur_param_name).TakesArgument() &&
         (GetArg(parse_data.cur_param_name).IsMultiValue() || !parse_data.cur_param_got_arg))
     {
-        is_good &= GetArg(parse_data.cur_param_name).AddValue(parse_data.cur_param_name);
+        is_good &= GetArg(parse_data.cur_param_name).AddValue(parse_data.cur_parse_arg);
     } else {
         is_good &= AddToPostional(parse_data.cur_parse_arg);
     }
@@ -72,12 +88,21 @@ bool ArgParser::ProcessValue(ParseData& parse_data) {
 
 bool ArgParser::ProcessFlag(ParseData& parse_data) {
     parse_data.cur_param_got_arg = false;
-    for (int i = 1; i < parse_data.cur_parse_arg.size(); ++i) {
-        char flag = parse_data.cur_parse_arg[i];
+    auto [flags, arg] = SplitByFirst(parse_data.cur_parse_arg, '=', 1);
+    if (arg.empty()) {
+        arg = kNullString;
+    }
+    for (int i = 0; i < flags.size(); ++i) {
+        char flag = flags[i];
         parse_data.cur_param_name = GetParamByFlag(flag);
         ArgCalled(parse_data.cur_param_name);
     }
-    parse_data.cur_type = ParseArgType::kEmpty;
+    parse_data.cur_parse_arg = arg;
+    if (arg != kNullString) {
+        parse_data.cur_type = ParseArgType::kValue;
+    } else {
+        parse_data.cur_type = ParseArgType::kEmpty;
+    }
     return true;
 }
 
@@ -90,9 +115,11 @@ bool ArgParser::ProcessArgument(ParseData& parse_data) {
     if (param.size() == arg_size - 2) {
         parse_data.cur_parse_arg = kNullString;
         parse_data.cur_type = ParseArgType::kEmpty;
+        parse_data.cur_param_got_arg = false;
     } else {
-        parse_data.cur_parse_arg = parse_data.cur_parse_arg.substr(2 + param.size());
+        parse_data.cur_parse_arg = parse_data.cur_parse_arg.substr(2 + param.size() + 1);
         parse_data.cur_type = ParseArgType::kValue;
+        parse_data.cur_param_got_arg = false;
     }
     return true;
 }
@@ -105,7 +132,13 @@ ArgParser::ParseArgType ArgParser::GetParseArgType(const std::string& arg) const
         return ParseArgType::kValue;
     }
     if (arg[1] != '-') {
-        for (int i = 1; i < arg.size(); ++i) {
+        if (!ValidateFlag(arg[1])) {
+            return ParseArgType::kValue;
+        }
+        for (int i = 2; i < arg.size(); ++i) {
+            if (arg[i] == '=') {
+                break;
+            }
             if (!ValidateFlag(arg[i])) {
                 return ParseArgType::kValue;
             }

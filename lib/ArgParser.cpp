@@ -160,7 +160,10 @@ bool ArgParser::CheckArgsAreOk() {
         if (param == help_node_param_) {
             continue;
         }
-        if (!ptr->IsOk()) return false;
+        if (!ptr->IsOk()) {
+            std::cout << param << "\n";
+            return false;
+        }
     }
     return true;
 }
@@ -217,6 +220,14 @@ void ArgParser::Update() {
         last_added_param_ = kNoneParamName;
     }
     need_update_ = false;
+}
+
+void ArgParser::Reset() {
+    Update();
+    for (auto& [param, ptr] : name_to_argument_node_) {
+        ptr->Reset();
+    }
+    good_parse_ = true;
 }
 
 ArgParser::Node& ArgParser::GetArg(const std::string& param) {

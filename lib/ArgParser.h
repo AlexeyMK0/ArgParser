@@ -47,50 +47,26 @@ private:
      public:
         const static std::unique_ptr<Node> kNullNodePtr; 
      protected:
-        Node(const std::string& description, const char flag) {
-            description_ = description;
-            flag_ = flag;
-        }
+        Node(const std::string& description, const char flag);
      public:
-        virtual std::string GetFlag() const {
-            std::string desc = "";
-            if (flag_ != kNoneFlag) {
-                desc.push_back('-');
-                desc.push_back(flag_);
-            } else {
-                desc = "  ";
-            }
-            return desc;
-        }
         virtual void Reset() { is_used_ = false; }
         virtual ArgType GetType() const { return ArgType::kNone; }
         virtual bool AddValue(const std::string& val)
             {return true;}
         virtual void ArgCalled() {}
         virtual bool IsOk() const { return true; }
-        virtual bool TakesArgument() const { return false; }
+        virtual bool TakesArgument() const;
         virtual std::string GetDescription() const { return description_; }
+        virtual std::string GetFlag() const;
         virtual std::string GetLongArg(const std::string& name_) const
             { return "--" + name_; }
-        virtual std::string GetFlag() {
-            std::string ret = "  ";
-            if (flag_ != kNoneFlag) {
-                ret = "-";
-                ret.push_back(flag_);
-            }
-            return ret;
-        }
         virtual std::string GetRequirements(std::string sep = ", ") const 
             { return kNullString; }
         bool IsUsed() const { return is_used_; }
         bool IsMultiValue() const { return is_multivalue_; }
      protected:
-        void AddSepIfNotNull(std::string& val, const std::string& sep) const {
-            if (val != kNullString) {
-                val += sep;
-            }
-        }
-        virtual void CreateValuesIfNeed() {};
+        void AddSepIfNotNull(std::string& val, const std::string& sep) const;
+        virtual void CreateValuesIfNeed() {}
         // int max_size_ = std::numeric_limits<int>::max();
         bool is_used_ = false;
         bool has_default_ = false;
@@ -179,6 +155,7 @@ private:
         virtual ArgType GetType() const override { return ArgType::kStringArg; }
         virtual bool AddValue(const std::string& val) override;
         virtual bool IsOk() const override;
+        virtual bool TakesArgument() const override { return true; }
         virtual std::string GetRequirements(std::string sep = ", ") const override;
         virtual std::string GetLongArg(const std::string& name) const override; 
         virtual StringArg& Positional() override;
@@ -240,6 +217,7 @@ private:
     void SetPositional(const std::string& param);
     bool AddToPostional(const std::string& val);
     void Update();
+    void Reset();
     // std::unique_ptr<Node> CreateNode(ArgType type);
     Node& GetArg(const std::string& param);
     HelpArg& GetHelpArg();

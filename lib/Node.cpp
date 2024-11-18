@@ -20,6 +20,30 @@ std::pair<int, bool> ConvertToInt(const std::string& val) {
 }
 
 namespace ArgumentParser {
+    // Node //
+    ArgParser::Node::Node(const std::string& descrption, const char flag)
+        : description_(descrption), flag_(flag) {}
+    
+    bool ArgParser::Node::TakesArgument() const {
+        return false;
+    }
+
+    std::string ArgParser::Node::GetFlag() const {
+        std::string ret = "  ";
+        if (flag_ != kNoneFlag) {
+            ret = "-";
+            ret.push_back(flag_);
+        }
+        return ret;
+    }
+
+    void ArgParser::Node::AddSepIfNotNull(std::string& val, const std::string& sep) const {
+        if (val != kNullString) {
+            val += sep;
+        }
+    }
+
+
     // BoolArg //
     ArgParser::BoolArg::BoolArg(const std::string& description, const char flag) :
         Node(description, flag)
@@ -61,6 +85,7 @@ namespace ArgumentParser {
     ArgParser::BoolArg& ArgParser::BoolArg::Default(bool val) {
         has_default_ = true;
         default_val_ = val;
+        CreateValuesIfNeed();
         return *this;
     }
 
@@ -229,9 +254,7 @@ namespace ArgumentParser {
     ArgParser::IntArg& ArgParser::IntArg::Default(int val) { 
         has_default_ = true;
         default_val_ = val;
-        if (stored_value_ == nullptr)
-            stored_value_ = new int(val);
-        *stored_value_ = default_val_;
+        CreateValuesIfNeed();
         return *this;
     }
 
@@ -327,7 +350,9 @@ namespace ArgumentParser {
     }
 
     ArgParser::StringArg& ArgParser::StringArg::StoreValue(std::string& storage) {
-        if (stored_value_ != nullptr && !stores_value_) delete stored_value_;
+        if (stored_value_ != nullptr && !stores_value_) {
+            delete stored_value_;
+        }
         stored_value_ = &storage;
         stores_value_ = true;
         return *this;
@@ -343,8 +368,7 @@ namespace ArgumentParser {
     ArgParser::StringArg& ArgParser::StringArg::Default(const std::string& val) {
         has_default_ = true;
         default_val_ = val;
-        if (stored_value_ == nullptr)
-            stored_value_ = new std::string(val);
+        CreateValuesIfNeed();
         *stored_value_ = default_val_;
         return *this;
     }
