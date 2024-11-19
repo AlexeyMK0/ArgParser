@@ -7,7 +7,6 @@ namespace ArgumentParser {
 const std::string ArgParser::kNullString = "";
 const std::string ArgParser::kNoneParamName = kNullString;
 const std::string ArgParser::kDefaultHelpDescription = "Display this help and exit";
-// const std::unique_ptr<ArgParser::Node> ArgParser::Node::kNullNodePtr {nullptr};
 
 ArgParser::ArgParser(const std::string& name) {
     name_ = name;
@@ -17,7 +16,6 @@ ArgParser::ArgParser(const std::string& name) {
         std::vector<std::string>(kMaxFlagValue, kNoneParamName);
 }
 
-// ArgParser::~ArgParser();
 
 void ArgParser::AddHelp(const char flag, const std::string param_name, 
     const std::string& description) 
@@ -31,7 +29,6 @@ void ArgParser::AddHelp(const char flag, const std::string param_name,
 
 bool ArgParser::Help() {
     if (help_node_param_ == kNoneParamName) return false;
-    // HelpArg& helpNode = static_cast<HelpArg&>(GetArg(help_node_param_));
     return GetHelpArg().IsUsed();
 }
 
@@ -47,25 +44,19 @@ std::string ArgParser::HelpDescription() {
 }
 
 std::string ArgParser::GetStringValue(std::string param, int ind) {
-    if (!CheckType(ArgType::kStringArg, param)) {
-        // handle an error
-    }
+    AssertType(ArgType::kStringArg, param);
     StringArg& arg = GetStringArg(param);
     return arg.GetStringValue(ind);
 }
 
 bool ArgParser::GetFlag(std::string param) {
-    if (!CheckType(ArgType::kBoolArg, param)) {
-        // handle an error
-    }
+    AssertType(ArgType::kBoolArg, param);
     BoolArg& arg = GetBoolArg(param);
     return arg.GetValue();
 }
 
 int ArgParser::GetIntValue(std::string param, int ind) {
-    if (!CheckType(ArgType::kIntArg, param)) {
-        // handle an error
-    }
+    AssertType(ArgType::kIntArg, param);
     IntArg& arg = GetIntArg(param);
     return arg.GetIntValue(ind);
 }
@@ -114,17 +105,13 @@ std::string ArgParser::GetParamByFlag(const char flag) const {
     return flag_to_name_[flag];
 }
 
-// std::unique_ptr<ArgParser::Node>& ArgParser::GetPtr(const std::string& param) {
-//     auto node = name_to_argument_node_.find(param);
-//     if (node == name_to_argument_node_.end()) {
-//         // handle an error
-//     }
-//     return node->second;
-// }
 
-// void ArgParser::AssertNotNone(const std::string& param_name) const {
-    
-// }
+
+void ArgParser::AssertType(ArgType type, const std::string &param_name) const {
+    if (!CheckType(type, param_name)) {
+        throw std::runtime_error("Miss type error. Param name: " + param_name);
+    }
+}
 
 bool ArgParser::CheckType(ArgType type, const std::string& param_name) const {
     auto node = name_to_argument_node_.find(param_name);
@@ -139,8 +126,12 @@ bool ArgParser::CheckType(ArgType type, const std::unique_ptr<Node>& node) const
 }
 
 bool ArgParser::CheckPositional(const std::string& param_name) const {
-    return CheckType(ArgType::kIntArg, param_name) || 
-        CheckType(ArgType::kStringArg, param_name);
+    if (!CheckType(ArgType::kIntArg, param_name) &&
+        !CheckType(ArgType::kStringArg, param_name))
+    {
+        return false;
+    }
+    return static_cast<PositionalNode&>(*name_to_argument_node_.at(param_name)).IsPositional();
 }
 
 bool ArgParser::CheckAddNewArg(const char flag, 
@@ -161,7 +152,6 @@ bool ArgParser::CheckArgsAreOk() {
             continue;
         }
         if (!ptr->IsOk()) {
-            std::cout << param << "\n";
             return false;
         }
     }
@@ -197,7 +187,7 @@ void ArgParser::ArgCalled(const std::string& param) {
 
 void ArgParser::SetPositional(const std::string& param) {
     if (positional_param_ != kNoneParamName) {
-        // handle an error
+        throw std::runtime_error("Positional argument could be only one");        
     }
     positional_param_ = param;
 }
@@ -231,38 +221,35 @@ void ArgParser::Reset() {
 }
 
 ArgParser::Node& ArgParser::GetArg(const std::string& param) {
-    if (CheckType(ArgType::kNone, param)) {
-        // handle an error
-    }
     return *name_to_argument_node_[param];
 }
 
 ArgParser::HelpArg& ArgParser::GetHelpArg() {
     if (!CheckType(ArgType::kHelp, help_node_param_)) {
-        // handle an error
+        throw std::runtime_error("Help argument is missed or is duplicated by other argument");
     }
-    return static_cast<HelpArg&>(*name_to_argument_node_[help_node_param_]);
+    return static_cast<HelpArg&>(GetArg(help_node_param_));
 }
 
 ArgParser::IntArg& ArgParser::GetIntArg(const std::string& param) {
     if (!CheckType(ArgType::kIntArg, param)) {
         throw std::runtime_error(param + " is not int arg");
     }
-    return static_cast<IntArg&>(*name_to_argument_node_[param]);
+    return static_cast<IntArg&>(GetArg(param));
 }
 
 ArgParser::StringArg& ArgParser::GetStringArg(const std::string& param) {
     if (!CheckType(ArgType::kStringArg, param)) {
         throw std::runtime_error(param + " is not string arg");
     }
-    return static_cast<StringArg&>(*name_to_argument_node_[param]);
+    return static_cast<StringArg&>(GetArg(param));
 }
 
 ArgParser::BoolArg& ArgParser::GetBoolArg(const std::string& param) {
     if (!CheckType(ArgType::kBoolArg, param)) {
         throw std::runtime_error(param + " is not bool arg");
     }
-    return static_cast<BoolArg&>(*name_to_argument_node_[param]);
+    return static_cast<BoolArg&>(GetArg(param));
 }
 
 std::string ArgParser::GetArgInfo(const Node& val, const std::string& name) {

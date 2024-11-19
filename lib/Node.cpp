@@ -260,7 +260,7 @@ namespace ArgumentParser {
 
     int ArgParser::IntArg::GetIntValue(int ind) const {
         if (!is_used_ && !has_default_) {
-            // handle an error
+            throw std::runtime_error("Int value is not initialized");
         }
         if (IsMultiValue()) {
             return values_->at(ind);
@@ -375,7 +375,7 @@ namespace ArgumentParser {
 
     std::string ArgParser::StringArg::GetStringValue(int ind) const {
         if (!is_used_ && !has_default_) {
-            // handle an error
+            throw std::runtime_error("String value is not initialized");
         }
         if (IsMultiValue()) {
             return values_->at(ind);

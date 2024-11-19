@@ -18,7 +18,7 @@ class ArgParser {
     const static std::string kNoneParamName;
     const static std::string kDefaultHelpDescription;
 private:
-    enum ArgType {
+    enum class ArgType {
         kIntArg = 0,
         kBoolArg,
         kStringArg,
@@ -26,7 +26,7 @@ private:
         kNone
     };
 
-    enum ParseArgType {
+    enum class ParseArgType {
         kValue = 0,
         kFlag,
         kArgument,
@@ -67,7 +67,6 @@ private:
      protected:
         void AddSepIfNotNull(std::string& val, const std::string& sep) const;
         virtual void CreateValuesIfNeed() {}
-        // int max_size_ = std::numeric_limits<int>::max();
         bool is_used_ = false;
         bool has_default_ = false;
         bool stores_value_ = false;
@@ -174,7 +173,6 @@ private:
 
 public:
     ArgParser(const std::string& name);
-    // ~ArgParser();
     bool Parse(const int argc, char** argv);
     bool Parse(const std::vector<std::string>& args);
     bool ProcessValue(ParseData& parse_data);
@@ -203,7 +201,7 @@ public:
     std::string GetParamByFlag(const char flag) const;
 
 private:
-    // std::unique_ptr<Node>& GetPtr(const std::string& param);
+    void AssertType(ArgType type, const std::string &param_name) const;
     bool CheckType(ArgType type, const std::string &param_name) const;
     bool CheckType(ArgType type, const std::unique_ptr<Node>& node) const;
     bool CheckPositional(const std::string& param_name) const;
