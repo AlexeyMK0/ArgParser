@@ -44,8 +44,6 @@ private:
     };
 
     class Node {
-     public:
-        const static std::unique_ptr<Node> kNullNodePtr; 
      protected:
         Node(const std::string& description, const char flag);
      public:
